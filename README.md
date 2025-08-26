@@ -21,4 +21,56 @@ The code is written as a Colab-friendly notebook, but also runs locally with a s
 
 * Environment & Setup (Python dependencies): pandas, numpy, scikit-learn, torch, torchvision (GPU optional), adversarial-robustness-toolbox (ART), scipy, 
                                              statsmodels, matplotlib
+
+    pip install torch pandas numpy scikit-learn adversarial-robustness-toolbox scipy statsmodels matplotlib
+
+
+
+
+***** The main steps to run the adaptive randomized smoothing method:
+1. Load & prepare data:
+
+    Reads the balanced UNSW train/test CSVs
+
+    Splits features/labels and converts to PyTorch tensors
+
+    Detects categorical columns by the cat__ prefix (+ some extra indicators)
+
+2. Train a base model
+
+    TabularNN (MLP) trained with cross-entropy
+
+    Reports epoch losses to evaluation_results.txt
+
+3. Build an ART classifier
+
+   PyTorchClassifier wrapper with clip_values=(0,1) (change if your features aren’t in [0,1])
+
+4. Generate adversarial examples
+
+   Attacks: FGSM, PGD, DeepFool, HSJ, CW-L2, ZOO, (JSMA optional)
+
+   LowProFool (custom): uses Pearson correlation-based feature importance for weighted perturbations; includes bounds and a small step size to be less aggressive
+
+    Saves raw adversarial arrays (e.g., X_adv_pgd_unsw_M.txt)
+
+     Restore categorical features
+
+     After attack, categorical indices are copied back from clean test data to maintain domain validity
+
+5. Evaluate
+
+    Clean accuracy on test set, for each attack, adversarial accuracy and evaluation time
+
+** The code for Adaptive model (AdaptiveSmoothEntropy) find: 
+
+   1. Entropy-aware noise mixing during later training epochs
+
+   2. Certification via margin–confidence proxy and adaptive sampling (n scaled by margin & confidence)
+
+     Reports accuracy and certified accuracy
+
+** The code for Original smoothing (Smooth) find:  Standard two-stage sampling (n0, n), Clopper–Pearson LCB
+
+5-fold evaluation over test indices for adversarial files; averages are reported
   
