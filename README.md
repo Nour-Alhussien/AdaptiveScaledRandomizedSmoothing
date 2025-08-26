@@ -1,76 +1,84 @@
 # AdaptiveScaledRandomizedSmoothing
-
 This project trains a tabular neural network on a balanced UNSW-NB15 split, generates adversarial examples with the Adversarial Robustness Toolbox (ART), and evaluates two certification schemes:
 
-1. Original randomized smoothing (baseline)
+* Original randomized smoothing (baseline)
 
-2. AdaptiveSmoothEntropy — an adaptive variant that: injects entropy-aware noise during training and uses a margin–confidence proxy to adapt the number of samples during certification.
+* AdaptiveSmoothEntropy — an adaptive variant that: injects entropy-aware noise during training and uses a margin–confidence proxy to adapt the number of samples during certification.
 
 The code is written as a Colab-friendly notebook, but also runs locally with a standard Python environment.
 
-* Training: Simple 4-layer MLP for tabular data (TabularNN) and Adam/AdamW optimizers, optional StepLR scheduler
+# Training: 
+Simple 4-layer MLP for tabular data (TabularNN) and Adam/AdamW optimizers, optional StepLR scheduler
 
-* Attacks (ART): FGSM, PGD, DeepFool, HopSkipJump (HSJ), Carlini–Wagner (CW-L2), ZOO, (JSMA optional)
+# Attacks (ART): 
+* FGSM, PGD, DeepFool, HopSkipJump (HSJ), Carlini–Wagner (CW-L2), ZOO, (JSMA optional)
 
 * Tabular attack: LowProFool: weighted-norm, low-profile perturbations using feature importance
 
-* Certification: Baseline Randomized Smoothing (Smooth) and AdaptiveSmoothEntropy (entropy-aware training + margin-based adaptive sampling)
+# Certification: 
+* Baseline Randomized Smoothing (Smooth)
+* AdaptiveSmoothEntropy (entropy-aware training + margin-based adaptive sampling)
 
-* Evaluation: Clean accuracy, Adversarial accuracy (per attack), Certified accuracy (fraction of points whose certified class matches the true label), 5-fold 
-              evaluation over the test set indices for adversarial files, and Timing per attack.
+# Evaluation: 
+* Clean accuracy
+*  Adversarial accuracy (per attack)
+*  Certified accuracy (fraction of points whose certified class matches the true label)
+*  5-fold evaluation over the test set indices for adversarial files
+*  Timing per attack.
 
-* Environment & Setup (Python dependencies): pandas, numpy, scikit-learn, torch, torchvision (GPU optional), adversarial-robustness-toolbox (ART), scipy, 
-                                             statsmodels, matplotlib
+# Environment & Setup (Python dependencies):
+pandas, numpy, scikit-learn, torch, torchvision (GPU optional), adversarial-robustness-toolbox (ART), scipy, statsmodels, matplotlib
 
-    pip install torch pandas numpy scikit-learn adversarial-robustness-toolbox scipy statsmodels matplotlib
+--- pip install torch pandas numpy scikit-learn adversarial-robustness-toolbox scipy statsmodels matplotlib
 
+# The main steps to run the adaptive randomized smoothing method:
 
+* Load & prepare data:
 
+    - Reads the balanced UNSW train/test CSVs
 
-***** The main steps to run the adaptive randomized smoothing method:
-1. Load & prepare data:
+    - Splits features/labels and converts to PyTorch tensors
 
-    Reads the balanced UNSW train/test CSVs
+    - Detects categorical columns by the cat__ prefix (+ some extra indicators)
 
-    Splits features/labels and converts to PyTorch tensors
+* Train a base model
 
-    Detects categorical columns by the cat__ prefix (+ some extra indicators)
+    - TabularNN (MLP) trained with cross-entropy
 
-2. Train a base model
+    - Reports epoch losses to evaluation_results.txt
 
-    TabularNN (MLP) trained with cross-entropy
+    - Build an ART classifier
 
-    Reports epoch losses to evaluation_results.txt
+    - PyTorchClassifier wrapper with clip_values=(0,1) (change if your features aren’t in [0,1])
 
-3. Build an ART classifier
+* Generate adversarial examples
 
-   PyTorchClassifier wrapper with clip_values=(0,1) (change if your features aren’t in [0,1])
+    - Attacks: FGSM, PGD, DeepFool, HSJ, CW-L2, ZOO, (JSMA optional)
 
-4. Generate adversarial examples
+    - LowProFool (custom): uses Pearson correlation-based feature importance for weighted perturbations; includes bounds and a small step size to be less aggressive
 
-   Attacks: FGSM, PGD, DeepFool, HSJ, CW-L2, ZOO, (JSMA optional)
+    - Saves raw adversarial arrays (e.g., X_adv_pgd_unsw_M.txt)
 
-   LowProFool (custom): uses Pearson correlation-based feature importance for weighted perturbations; includes bounds and a small step size to be less aggressive
+    - Restore categorical features
 
-    Saves raw adversarial arrays (e.g., X_adv_pgd_unsw_M.txt)
+    - After attack, categorical indices are copied back from clean test data to maintain domain validity
 
-     Restore categorical features
+* Evaluate
 
-     After attack, categorical indices are copied back from clean test data to maintain domain validity
+ - Clean accuracy on test set for each attack
+ - Adversarial accuracy
+ - Evaluation time
 
-5. Evaluate
+# The code for Adaptive model (AdaptiveSmoothEntropy) find:
 
-    Clean accuracy on test set, for each attack, adversarial accuracy and evaluation time
+   - Entropy-aware noise mixing during later training epochs
 
-** The code for Adaptive model (AdaptiveSmoothEntropy) find: 
+   - Certification via margin–confidence proxy and adaptive sampling (n scaled by margin & confidence)
 
-   1. Entropy-aware noise mixing during later training epochs
+   - Reports accuracy and certified accuracy
+# The code for Original smoothing (Smooth) find: 
 
-   2. Certification via margin–confidence proxy and adaptive sampling (n scaled by margin & confidence)
-
-     Reports accuracy and certified accuracy
-
-** The code for Original smoothing (Smooth) find:  Standard two-stage sampling (n0, n), Clopper–Pearson LCB
+- Standard two-stage sampling (n0, n)
+-  Clopper–Pearson LCB
 
 5-fold evaluation over test indices for adversarial files; averages are reported
-  
